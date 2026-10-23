@@ -79,7 +79,7 @@ class TestCodeReviewFix:
         def fix(prompt: str, cwd: Path) -> None:
             assert "нет проверки лимита" in prompt
             assert "имя переменной" not in prompt, "minor не отдаём фиксеру"
-            (cwd / "Limits.kt").write_text("fixed", encoding="utf-8")
+            (cwd / "Limits.py").write_text("fixed", encoding="utf-8")
 
         world.agent.scripts["code_review_fix"] = fix
 

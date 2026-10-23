@@ -12,11 +12,11 @@ from heroflow.flows.bug_fix import FLOW
 from heroflow.flows.bug_fix.nodes import short_test_name
 from heroflow.integrations.git import Git
 
-TEST_FILE = "src/test/LimitsTest.kt"
-# Проверки проекта в этих тестах: тест-воспроизведение падает, пока нет исправления src/main/Limits.kt
+TEST_FILE = "tests/test_limits.py"
+# Проверки проекта в этих тестах: тест-воспроизведение падает, пока нет исправления src/main/Limits.py
 CHECK = (
-    f"! test -f {TEST_FILE} || test -f src/main/Limits.kt"
-    ' || { echo "LimitsTest > rejects over limit FAILED"; exit 1; }'
+    f"! test -f {TEST_FILE} || test -f src/main/Limits.py"
+    ' || { echo "tests/test_limits.py::test_rejects_over_limit FAILED"; exit 1; }'
 )
 
 
@@ -49,7 +49,7 @@ def triage(prompt: str, cwd: Path) -> str:
 
 
 def root_cause(prompt: str, cwd: Path) -> None:
-    assert "rejects over limit FAILED" in prompt, "агенту показывают, как падает тест"
+    assert "test_rejects_over_limit FAILED" in prompt, "агенту показывают, как падает тест"
     write(cwd, ".heroflow-context/bug/root_cause.md", "## Причина\nнет проверки\n")
     write(cwd, ".heroflow-context/bug/tasks.md", "- [ ] Добавить проверку лимита\n")
 
@@ -60,13 +60,13 @@ def test_full_bug_flow(ctx: TaskContext, tmp_path: Path, origin: Path, world: Wo
     def reproduce(prompt: str, cwd: Path) -> str:
         attempts.append(prompt)
         if len(attempts) == 1:
-            return answer(test_file="src/test/Nope.kt", test_name="x")
-        write(cwd, TEST_FILE, "class LimitsTest { fun `rejects over limit`() {} }\n")
-        return answer(test_file=TEST_FILE, test_name="LimitsTest#rejects over limit")
+            return answer(test_file="tests/test_nope.py", test_name="x")
+        write(cwd, TEST_FILE, "def test_rejects_over_limit(): ...\n")
+        return answer(test_file=TEST_FILE, test_name="tests/test_limits.py::test_rejects_over_limit")
 
     def fix(prompt: str, cwd: Path) -> None:
-        assert "«Добавить проверку лимита»" in prompt and "rejects over limit" in prompt
-        write(cwd, "src/main/Limits.kt", "class Limits\n")
+        assert "«Добавить проверку лимита»" in prompt and "test_rejects_over_limit" in prompt
+        write(cwd, "src/main/Limits.py", "class Limits\n")
 
     world.agent.scripts = {
         "bug_triage": triage,
@@ -82,21 +82,21 @@ def test_full_bug_flow(ctx: TaskContext, tmp_path: Path, origin: Path, world: Wo
     assert result.status is TaskStatus.DONE, result.error
     assert len(attempts) == 2 and "не найден" in attempts[1], "вторая попытка получает причину отказа"
     assert result.context.bug.reproduced
-    assert "rejects over limit FAILED" in result.context.bug.repro_output
+    assert "test_rejects_over_limit FAILED" in result.context.bug.repro_output
     assert world.bitbucket.created == [("bugfix/PAY-1", "master")]
     assert [name for name, _ in world.jira.attachments] == ["PAY-1-report.md", "PAY-1-root_cause.md"]
 
     log = git("log", "--format=%s", "bugfix/PAY-1", cwd=origin).splitlines()
     assert log[:2] == ["PAY-1: Добавить проверку лимита", "PAY-1: failing test reproducing the bug"]
     files = git("ls-tree", "-r", "--name-only", "bugfix/PAY-1", cwd=origin).split()
-    assert TEST_FILE in files and "src/main/Limits.kt" in files
+    assert TEST_FILE in files and "src/main/Limits.py" in files
     assert not any(f.startswith(".heroflow-context") for f in files), "разбор бага не попадает в коммиты"
 
 
 def test_green_test_is_not_a_reproduction(ctx: TaskContext, tmp_path: Path, world: World) -> None:
     def passing_test(prompt: str, cwd: Path) -> str:
-        write(cwd, "src/test/OtherTest.kt", "class OtherTest\n")
-        return answer(test_file="src/test/OtherTest.kt", test_name="OtherTest#works")
+        write(cwd, "tests/test_other.py", "def test_works(): ...\n")
+        return answer(test_file="tests/test_other.py", test_name="test_other.py::test_works")
 
     world.agent.scripts = {"bug_triage": triage, "bug_reproduce": passing_test}
     world.human.answers = [False]  # продолжить без воспроизведения? нет
@@ -151,9 +151,9 @@ def test_routing_and_branch() -> None:
 @pytest.mark.parametrize(
     ("name", "short"),
     [
-        ("com.acme.LimitsTest#rejects 1.5 over limit", "rejects 1.5 over limit"),
+        ("LimitsTest#rejects 1.5 over limit", "rejects 1.5 over limit"),
         ("test_limits.py::test_over", "test_over"),
-        ("com.acme.LimitsTest.rejectsOverLimit", "rejectsOverLimit"),
+        ("acme.LimitsTest.rejectsOverLimit", "rejectsOverLimit"),
     ],
 )
 def test_short_test_name(name: str, short: str) -> None:

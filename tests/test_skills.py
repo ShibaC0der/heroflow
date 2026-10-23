@@ -34,7 +34,7 @@ def test_sources_and_priority(tmp_path: Path) -> None:
 
     found = available_skills(repo, config)
 
-    assert found["kotlin-review"].visible_to_cli is False, "встроенный скилл heroflow"
+    assert found["review-checklist"].visible_to_cli is False, "встроенный скилл heroflow"
     assert found["ponytail-review"].visible_to_cli is True
     assert found["mine"].description == "из репозитория"
 
@@ -44,12 +44,12 @@ def test_install_copies_only_hidden_skills(tmp_path: Path) -> None:
     make_skill(qwen / "skills", "ponytail")
     make_skill(extra, "team-style")
     repo = make_repo(tmp_path)
-    nodes = {"ralph": ["ponytail", "team-style"], "code_review_review": ["kotlin-review", "missing"]}
+    nodes = {"ralph": ["ponytail", "team-style"], "code_review_review": ["review-checklist", "missing"]}
     config = SkillsConfig(qwen_home=str(qwen), dirs=[str(extra)], nodes=nodes)
 
     installed = install_skills(repo, config)
 
-    assert installed == ["kotlin-review", "team-style"]
+    assert installed == ["review-checklist", "team-style"]
     assert (repo / ".qwen/skills/team-style/SKILL.md").exists()
     assert not (repo / ".qwen/skills/ponytail").exists(), "CLI найдёт его сам"
     assert git("status", "--porcelain", cwd=repo) == "", "скопированные скиллы не попадают в коммиты"
@@ -57,12 +57,12 @@ def test_install_copies_only_hidden_skills(tmp_path: Path) -> None:
 
 def test_repo_config_overrides_node_skills_and_hint(tmp_path: Path) -> None:
     repo = make_repo(tmp_path)
-    (repo / ".heroflow.yaml").write_text("skills:\n  ralph: [kotlin-review]\n", encoding="utf-8")
+    (repo / ".heroflow.yaml").write_text("skills:\n  ralph: [review-checklist]\n", encoding="utf-8")
     config = SkillsConfig(qwen_home=str(tmp_path / "none"), nodes={"ralph": ["ponytail"], "explore": []})
 
-    assert node_skills(repo, config) == {"ralph": ["kotlin-review"], "explore": []}
+    assert node_skills(repo, config) == {"ralph": ["review-checklist"], "explore": []}
     hint = skills_hint("ralph", repo, config)
-    assert "`kotlin-review`" in hint and "Чек-лист" in hint
+    assert "`review-checklist`" in hint and "Чек-лист" in hint
     assert skills_hint("explore", repo, config) == ""
 
 
@@ -71,6 +71,6 @@ def test_skills_command_reports_missing(tmp_path: Path, heroflow_home: Path, mon
     result = CliRunner().invoke(app, ["skills"])
 
     assert result.exit_code == 0, result.output
-    assert "kotlin-review" in result.output
+    assert "review-checklist" in result.output
     assert "не найден" in result.output
     assert "DietrichGebert/ponytail" in result.output

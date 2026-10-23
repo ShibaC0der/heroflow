@@ -19,6 +19,10 @@ log = logging.getLogger(__name__)
 REPO_CONFIG = ".heroflow.yaml"
 
 
+class ChecksNotConfiguredError(RuntimeError):
+    pass
+
+
 @dataclass(frozen=True)
 class CheckResult:
     ok: bool
@@ -39,7 +43,12 @@ def commands_for(repo_path: Path, config: ChecksConfig) -> list[str]:
 
 def run_checks(repo_path: Path, config: ChecksConfig) -> CheckResult:
     """Запускает команды по очереди до первой упавшей."""
-    for command in commands_for(repo_path, config):
+    commands = commands_for(repo_path, config)
+    if not commands:
+        raise ChecksNotConfiguredError(
+            "Не заданы проверки проекта: checks.commands в ~/.heroflow/config.yaml или checks в .heroflow.yaml"
+        )
+    for command in commands:
         log.info("Проверка: %s", command)
         try:
             result = subprocess.run(

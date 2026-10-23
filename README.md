@@ -89,22 +89,22 @@ heroflow сам запускает проверки проекта: зелёны
 `ralph_gate`, можно поправить руками и продолжить). Отдельного `opsx:verify` больше нет: соответствие спеке
 проверяет `code_review`, а правки фиксера тоже проходят через проверки и откатываются, если их ломают.
 
-Проверки задаются в конфиге или в `.heroflow.yaml` в корне целевого репозитория:
+Проверки задаются в конфиге или в `.heroflow.yaml` в корне целевого репозитория. Значения по умолчанию нет: без проверок heroflow не запускает реализацию, потому что «готово» решают именно они.
 
 ```yaml
 # ~/.heroflow/config.yaml
 checks:
-  commands: ["./gradlew build detekt test"]
+  commands: ["make build test"]
   timeout_s: 1800
 gigacode:
   # чтобы агент мог сам гонять сборку без подтверждения
-  allowed_tools: ["run_shell_command(./gradlew)"]
+  allowed_tools: ["run_shell_command(make)"]
 ```
 
 ```yaml
 # <repo>/.heroflow.yaml — перекрывает checks.commands для этого репозитория
 checks:
-  - ./gradlew :service:build :service:detekt :service:test
+  - make -C service lint test
 ```
 
 Модели по ролям: planner и reviewer берут `GG_REASONING_MODEL`, fixer — `GG_FAST_MODEL`.
@@ -157,7 +157,7 @@ ralph --ok--> verify_regression_test -> code_review -> create_pull_request -> hu
 
 Где ищутся скиллы, от дальнего к ближнему (при совпадении имён побеждает ближний):
 
-1. встроенные в heroflow: `src/heroflow/skills_builtin/` (сейчас `kotlin-review`, чек-лист ревью Kotlin);
+1. встроенные в heroflow: `src/heroflow/skills_builtin/` (сейчас `review-checklist`, общий чек-лист ревью);
 2. папки из `skills.dirs` в конфиге, например общий репозиторий скиллов команды;
 3. расширения CLI: `~/.qwen/extensions/*/skills`;
 4. `~/.qwen/skills`;
@@ -173,7 +173,7 @@ skills:
   nodes:
     ralph: [ponytail]                                  # реализация: минимум кода, тесты на рискованную логику
     code_review_fix: [ponytail]
-    code_review_review: [kotlin-review, ponytail-review]
+    code_review_review: [review-checklist, ponytail-review]
 ```
 
 Ponytail ставится как расширение: `qwen extensions install DietrichGebert/ponytail:ponytail`
@@ -221,17 +221,7 @@ edges = {
 Исходы: `ok`, `approve`, `iterate`, `stuck`, `need_human`. Если для `need_human` нет ребра, движок
 сохраняет задачу со статусом `waiting_human` и выходит.
 
-## Python для котлиниста
-
-| Kotlin | Здесь |
-|---|---|
-| Gradle | `uv` (`uv sync`, `uv run`, `uv.lock`) |
-| data class | pydantic `BaseModel`, `@dataclass(frozen=True)` |
-| sealed class + when | `StrEnum` + таблица рёбер / `match` |
-| interface | `typing.Protocol` (см. `ports.py`) |
-| null-safety | `str \| None` + `mypy --strict` |
-| detekt / ktlint | `ruff check`, `ruff format` |
-| JUnit | `pytest` |
+## Разработка
 
 Проверки перед коммитом:
 

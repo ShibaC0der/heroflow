@@ -17,9 +17,9 @@ def full_context(tmp_path: Path) -> TaskContext:
     ctx.jira.sprint = "Sprint 42"
     ctx.bug.plan_dir = ".heroflow-context/bug"
     ctx.bug.reproduced = True
-    ctx.bug.test_file = "src/test/kotlin/LimitsTest.kt"
-    ctx.bug.test_name = "rejects over limit"
-    ctx.bug.repro_output = "LimitsTest > rejects over limit FAILED"
+    ctx.bug.test_file = "tests/test_limits.py"
+    ctx.bug.test_name = "test_rejects_over_limit"
+    ctx.bug.repro_output = "tests/test_limits.py::test_rejects_over_limit FAILED"
     return ctx
 
 
@@ -37,7 +37,7 @@ def test_every_template_renders(template: str, tmp_path: Path) -> None:
         findings=[finding],
         round=RalplanRound(architect=review, critic=review),
         diff_file=".heroflow-context/review/diff.patch",
-        failure="$ ./gradlew build\nFAILED",
+        failure="$ make test\nFAILED",
         step="1. Модель",
         pending_count=2,
         progress_file=".heroflow-context/ralph/progress.md",

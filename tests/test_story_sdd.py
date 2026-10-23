@@ -52,7 +52,7 @@ def test_full_story_flow(origin: Path, tmp_path: Path, world: World) -> None:
 
     def implement(prompt: str, cwd: Path) -> None:
         assert "«1»" in prompt
-        write(cwd, "src/Limits.kt", "class Limits\n")
+        write(cwd, "src/Limits.py", "class Limits\n")
 
     world.agent.scripts = {
         "explore": explore,
@@ -82,7 +82,7 @@ def test_full_story_flow(origin: Path, tmp_path: Path, world: World) -> None:
     assert str(CHANGE / "proposal.md") not in files
     assert "openspec/changes/explore-PAY-1.md" not in files
     assert "openspec/changes/other-team-change/proposal.md" in files
-    assert "src/Limits.kt" in files
+    assert "src/Limits.py" in files
     assert result.context.ralph.iterations == 1
 
 
@@ -115,7 +115,7 @@ def test_code_comment_fix_that_breaks_checks_is_rolled_back(origin: Path, tmp_pa
 
     def breaks_build(prompt: str, cwd: Path) -> None:
         write(cwd, "BROKEN", "")
-        write(cwd, "src/Limits.kt", "class Limits\n")
+        write(cwd, "src/Limits.py", "class Limits\n")
 
     world.agent.scripts = {"human_review_impl": breaks_build}
     world.bitbucket.comments = [PrComment(id=9, author="alex", text="переименуй класс")]

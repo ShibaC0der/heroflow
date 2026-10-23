@@ -7,7 +7,7 @@ from conftest import World, make_context
 
 from heroflow.config import ChecksConfig
 from heroflow.engine import Outcome, TaskContext
-from heroflow.integrations.checks import run_checks
+from heroflow.integrations.checks import ChecksNotConfiguredError, run_checks
 from heroflow.integrations.git import Git
 from heroflow.nodes.ralph import RalphImplement, mark_done, pending_steps, stuck_reason
 
@@ -31,6 +31,11 @@ def test_checks_use_repo_override(tmp_path: Path) -> None:
     assert not run_checks(tmp_path, cfg).ok
     (tmp_path / ".heroflow.yaml").write_text("checks:\n  - 'true'\n  - echo ok\n", encoding="utf-8")
     assert run_checks(tmp_path, cfg).ok
+
+
+def test_checks_must_be_configured(tmp_path: Path) -> None:
+    with pytest.raises(ChecksNotConfiguredError):
+        run_checks(tmp_path, ChecksConfig(commands=[]))
 
 
 def test_checks_timeout(tmp_path: Path) -> None:
@@ -74,9 +79,9 @@ def test_one_step_per_iteration_with_fix_of_red_checks(ctx: TaskContext, world: 
         prompts.append(prompt)
         n = len(prompts)
         if n == 1:
-            (cwd / "Model.kt").write_text("model", encoding="utf-8")
+            (cwd / "Model.py").write_text("model", encoding="utf-8")
         elif n == 2:
-            (cwd / "Api.kt").write_text("api", encoding="utf-8")
+            (cwd / "Api.py").write_text("api", encoding="utf-8")
             (cwd / "BROKEN").write_text("x", encoding="utf-8")  # сломал сборку
         elif n == 3:
             (cwd / "BROKEN").unlink()  # починил

@@ -97,7 +97,7 @@ class GigaCodeConfig(ConfigBase):
     permission_mode: str = "auto-edit"
     # Чем ограничить ревьюверов: имена инструментов Qwen Code / GigaCode, которые пишут файлы или запускают команды
     # Что разрешить без подтверждения агентам, которые пишут код (worker, fixer).
-    # Например ["run_shell_command(./gradlew)"], чтобы агент сам гонял сборку. Пусто = по permission_mode
+    # Например ["run_shell_command(make)"], чтобы агент сам гонял сборку. Пусто = по permission_mode
     allowed_tools: list[str] = Field(default_factory=list)
     readonly_exclude_tools: list[str] = Field(
         default_factory=lambda: ["write_file", "edit", "run_shell_command", "monitor", "agent"]
@@ -117,7 +117,8 @@ class ChecksConfig(ConfigBase):
     model_config = SettingsConfigDict(env_prefix="hf_checks_")
     section = "checks"
 
-    commands: list[str] = Field(default_factory=lambda: ["./gradlew build"])
+    # Команды сборки, линтера и тестов целевого проекта. Обязательны: по ним решается, готова ли задача
+    commands: list[str] = Field(default_factory=list)
     timeout_s: int = 1800
     # Сколько последних строк вывода упавшей проверки отдавать агенту
     output_tail_lines: int = 150
@@ -167,7 +168,7 @@ class SkillsConfig(ConfigBase):
         default_factory=lambda: {
             "ralph": ["ponytail"],
             "code_review_fix": ["ponytail"],
-            "code_review_review": ["kotlin-review", "ponytail-review"],
+            "code_review_review": ["review-checklist", "ponytail-review"],
         }
     )
 

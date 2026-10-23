@@ -32,7 +32,7 @@ def bug_tasks_file(ctx: TaskContext) -> Path:
 
 
 def short_test_name(test_name: str) -> str:
-    """`com.acme.LimitsTest#rejects over limit` -> `rejects over limit`: так тест обычно виден в выводе сборки."""
+    """`tests/test_limits.py::test_over` -> `test_over`, `LimitsTest#rejects` -> `rejects`: так тест виден в выводе."""
     for sep in ("#", "::", "."):
         if sep in test_name:
             test_name = test_name.rsplit(sep, 1)[1]

@@ -26,7 +26,7 @@ class TestBitbucketComments:
     def test_takes_only_hf_commands_and_strips_prefix(self) -> None:
         result = parse_comments(
             [
-                activity(comment(1, "/hf переименуй метод"), {"path": "src/A.kt", "line": 10}),
+                activity(comment(1, "/hf переименуй метод"), {"path": "src/A.py", "line": 10}),
                 activity(comment(2, "просто комментарий")),
                 activity(comment(3, "см. /hfoo/bar")),
                 activity(comment(4, "/heroflow: добавь тест на путь /hf/x")),
@@ -34,7 +34,7 @@ class TestBitbucketComments:
             allowed_authors=[],
         )
         assert [(c.id, c.text, c.file, c.line) for c in result] == [
-            (1, "переименуй метод", "src/A.kt", 10),
+            (1, "переименуй метод", "src/A.py", 10),
             (4, "добавь тест на путь /hf/x", None, None),
         ]
 
@@ -42,13 +42,13 @@ class TestBitbucketComments:
         reply = comment(11, "/hf и здесь тоже")
         result = parse_comments(
             [
-                activity(comment(10, "обсуждение", comments=[reply]), {"path": "B.kt", "line": 5}),
+                activity(comment(10, "обсуждение", comments=[reply]), {"path": "B.py", "line": 5}),
                 activity(comment(20, "/hf уже решено", threadResolved=True)),
-                activity(comment(30, "/hf к удалённой строке"), {"path": "C.kt", "orphaned": True}),
+                activity(comment(30, "/hf к удалённой строке"), {"path": "C.py", "orphaned": True}),
             ],
             allowed_authors=[],
         )
-        assert [(c.id, c.file, c.line) for c in result] == [(11, "B.kt", 5)]
+        assert [(c.id, c.file, c.line) for c in result] == [(11, "B.py", 5)]
 
     def test_author_allowlist(self) -> None:
         result = parse_comments(
