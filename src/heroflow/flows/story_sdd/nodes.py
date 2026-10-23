@@ -9,17 +9,11 @@ from pathlib import Path
 from heroflow.engine import Env, Outcome, TaskContext
 from heroflow.flows.story_sdd import prompts
 from heroflow.integrations.git import Git
+from heroflow.nodes.agent import Role, call_agent
 
 log = logging.getLogger(__name__)
 
 CHANGES_DIR = Path("openspec") / "changes"
-
-
-def call_agent(node: str, ctx: TaskContext, env: Env, prompt: str, *, model: str | None = None) -> str:
-    """Вызов агента с логом всей траектории в tasks/<KEY>/logs/<узел>-<N>.jsonl."""
-    ctx.logs_dir.mkdir(parents=True, exist_ok=True)
-    n = len(list(ctx.logs_dir.glob(f"{node}-*.jsonl"))) + 1
-    return env.agent.run(prompt, ctx.repo_path, model=model, log_file=ctx.logs_dir / f"{node}-{n}.jsonl")
 
 
 def change_name(ctx: TaskContext) -> str:
@@ -54,7 +48,7 @@ class Propose:
     name = "opsx_propose"
 
     def run(self, ctx: TaskContext, env: Env) -> Outcome:
-        call_agent(self.name, ctx, env, prompts.propose(ctx, change_name(ctx)))
+        call_agent(self.name, ctx, env, prompts.propose(ctx, change_name(ctx)), role=Role.PLANNER)
         Git(ctx.repo_path).commit_all(f"propose done. {ctx.issue_key} [skip ci]")
         return Outcome.OK
 
@@ -92,22 +86,6 @@ class AddSddLabel:
 
     def run(self, ctx: TaskContext, env: Env) -> Outcome:
         env.jira.add_label(ctx.issue_key, "SDD")
-        return Outcome.OK
-
-
-class SelfReviewSpec:
-    name = "review_proposal"
-    max_iterations = 3
-
-    def run(self, ctx: TaskContext, env: Env) -> Outcome:
-        git = Git(ctx.repo_path)
-        for i in range(1, self.max_iterations + 1):
-            log.info("Самопроверка спеки, итерация %s", i)
-            call_agent(self.name, ctx, env, prompts.review_proposal(ctx))
-            if not git.commit_all(f"research. self-review iteration {i}. {ctx.issue_key} [skip ci]"):
-                log.info("Самопроверка спеки пройдена")
-                return Outcome.OK
-        log.warning("Спека менялась на всех %s итерациях самопроверки, иду дальше без схождения", self.max_iterations)
         return Outcome.OK
 
 
@@ -160,7 +138,7 @@ class HumanReview:
 
         comments_md = "\n".join(c.as_markdown() for c in comments)
         log.info("Исправляю замечания:\n%s", comments_md)
-        call_agent(self.name, ctx, env, self.prompt(ctx, comments_md))
+        call_agent(self.name, ctx, env, self.prompt(ctx, comments_md), role=Role.FIXER)
 
         git = Git(ctx.repo_path)
         if git.commit_all(self.commit_message.format(key=ctx.issue_key)):

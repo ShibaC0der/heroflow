@@ -22,6 +22,9 @@ def run_flow(flow: Flow, state: TaskState, env: Env, store: TaskStore) -> TaskSt
         return state
 
     current = state.current_node or flow.start
+    if state.status in (TaskStatus.STUCK, TaskStatus.WAITING_HUMAN):
+        # Человек вмешался и запустил resume: даём узлу новые попытки
+        state.visits[current] = 0
     state.status = TaskStatus.RUNNING
     state.error = None
     state.current_node = current

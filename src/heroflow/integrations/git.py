@@ -69,6 +69,14 @@ class Git:
         self._run("commit", "-m", message)
         return True
 
+    def discard_changes(self) -> None:
+        """Откатывает незакоммиченные правки и новые файлы. Исключённые (.git/info/exclude) не трогает."""
+        self._run("reset", "--hard", "-q")
+        self._run("clean", "-fdq")
+
+    def diff(self, base: str) -> str:
+        return self._run("diff", f"{base}...HEAD").stdout
+
     def push(self, branch: str) -> None:
         log.info("Push -> %s", branch)
         self._run("push", "-u", "origin", branch)

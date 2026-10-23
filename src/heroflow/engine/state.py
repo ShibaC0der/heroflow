@@ -52,6 +52,50 @@ class PullRequest(BaseModel):
     url: str
 
 
+class Severity(StrEnum):
+    BLOCKER = "blocker"
+    MAJOR = "major"
+    MINOR = "minor"
+
+
+SEVERITY_ORDER = {Severity.BLOCKER: 0, Severity.MAJOR: 1, Severity.MINOR: 2}
+
+
+class Verdict(StrEnum):
+    APPROVE = "APPROVE"
+    ITERATE = "ITERATE"
+    REJECT = "REJECT"
+
+
+class Finding(BaseModel):
+    severity: Severity
+    title: str
+    detail: str = ""
+    file: str | None = None
+    line: int | None = None
+
+    def as_markdown(self) -> str:
+        where = f" (`{self.file}{':' + str(self.line) if self.line else ''}`)" if self.file else ""
+        detail = f"\n  {self.detail}" if self.detail else ""
+        return f"- [{self.severity}] {self.title}{where}{detail}"
+
+
+class Review(BaseModel):
+    """Ответ ревьювера. Ревьювер файлы не меняет, только возвращает этот JSON."""
+
+    verdict: Verdict
+    summary: str = ""
+    findings: list[Finding] = Field(default_factory=list)
+
+    def at_least(self, severity: Severity) -> list[Finding]:
+        return [f for f in self.findings if SEVERITY_ORDER[f.severity] <= SEVERITY_ORDER[severity]]
+
+
+class RalplanRound(BaseModel):
+    architect: Review
+    critic: Review
+
+
 class ContextRepo(BaseModel):
     """Внешний репозиторий, склонированный как контекст (например, системная аналитика)."""
 
@@ -77,6 +121,9 @@ class TaskContext(BaseModel):
     # Пути относительно repo_path, чтобы агент видел их внутри рабочей папки
     attachments: list[str] = Field(default_factory=list)
     context_repos: dict[str, ContextRepo] = Field(default_factory=dict)
+    # История ревью по узлам: продолжение после resume и материал для описания PR
+    reviews: dict[str, list[Review]] = Field(default_factory=dict)
+    ralplan: list[RalplanRound] = Field(default_factory=list)
 
     @property
     def repo_path(self) -> Path:

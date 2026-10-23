@@ -76,12 +76,16 @@ class FakeBitbucket:
         return list(self.comments)
 
 
-AgentScript = Callable[[str, Path], None]
+AgentScript = Callable[[str, Path], str | None]
+
+APPROVE = '```json\n{"verdict": "APPROVE", "summary": "ok", "findings": []}\n```'
+REVIEWER_NODES = ("ralplan_architect", "ralplan_critic", "code_review_review")
 
 
 @dataclass
 class FakeAgent:
-    """Агент по сценарию: для каждого узла функция, которая «редактирует» репозиторий."""
+    """Агент по сценарию: для каждого узла функция, которая «редактирует» репозиторий
+    и может вернуть ответ. Ревьюверы по умолчанию отвечают APPROVE."""
 
     scripts: dict[str, AgentScript] = field(default_factory=dict)
     calls: list[tuple[str, str]] = field(default_factory=list)
@@ -99,9 +103,10 @@ class FakeAgent:
         node = log_file.stem.rsplit("-", 1)[0] if log_file else "?"
         self.calls.append((node, prompt))
         script = self.scripts.get(node)
-        if script:
-            script(prompt, cwd)
-        return "ok"
+        answer = script(prompt, cwd) if script else None
+        if answer is not None:
+            return answer
+        return APPROVE if node in REVIEWER_NODES else "ok"
 
 
 @dataclass

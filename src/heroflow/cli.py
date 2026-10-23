@@ -156,6 +156,18 @@ def status(issue_key: Annotated[str, typer.Argument(help="Ключ задачи 
         console.print(f"PR: {s.context.pull_request.url}")
     if s.error:
         console.print(f"[red]{s.error}[/]")
+    if s.context.ralplan:
+        last = s.context.ralplan[-1]
+        console.print(f"\n[bold]ralplan[/], раундов: {len(s.context.ralplan)}")
+        for role, review in (("architect", last.architect), ("critic", last.critic)):
+            console.print(f"  {role}: {review.verdict}. {review.summary}")
+            for f in review.findings:
+                console.print(f"    {f.as_markdown()}")
+    for name, reviews in s.context.reviews.items():
+        last_review = reviews[-1]
+        console.print(f"\n[bold]{name}[/], раундов: {len(reviews)}: {last_review.verdict}. {last_review.summary}")
+        for f in last_review.findings:
+            console.print(f"    {f.as_markdown()}")
     table = Table("Начало", "Узел", "Исход", "Длительность")
     for t in s.history:
         table.add_row(_ago(t.started_at), t.node, t.outcome, f"{t.duration_s:.0f} с")

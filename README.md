@@ -58,6 +58,30 @@ context:
 в состоянии задачи. Контекст передаётся в промпты explore, propose, самопроверки спеки и правок спеки.
 `pdf` и `docx` конвертируются в Markdown, если установлен `markitdown` (`uv sync --extra docs`).
 
+## Флоу story_sdd
+
+```
+init_sandbox -> gather_context -> explore -> opsx_propose -> resolve_delta_spec_dir -> ralplan
+ralplan --approve--> add_sdd_label -> create_pull_request -> human_review_proposal (цикл по /hf)
+ralplan --stuck----> ralplan_gate (человек: продолжить или пауза) --ok--> add_sdd_label
+human_review_proposal --approve--> opsx_apply -> opsx_verify -> code_review
+code_review --approve--> human_review_impl (цикл по /hf) --approve--> attach_spec -> cleanup -> END
+code_review --stuck----> code_review_gate --ok--> human_review_impl
+```
+
+**ralplan** — Planner (opsx:propose, затем доработки) и два ревьювера: Architect (архитектура относительно
+референсов, контраргумент и компромиссы) и Critic (покрытие задачи, проверяемость сценариев и задач).
+Ревьюверы работают только на чтение, смотрят на один снимок спеки и не видят ответы друг друга; отвечают JSON
+с вердиктом `APPROVE / ITERATE / REJECT` и находками. Planner получает оба ревью и дорабатывает спеку.
+Одобрено, когда Critic сказал APPROVE, а у Architect нет блокеров. До 5 раундов, потом решение за человеком.
+
+**code_review** — ревьювер (только чтение, видит diff от базовой ветки) и фиксер (правит только находки
+`blocker` и `major`). До 3 раундов. Ревьюверам отключаются инструменты записи и shell
+(`gigacode.readonly_exclude_tools`); если ревьювер всё же что-то поменял, изменения откатываются.
+
+Модели по ролям: planner и reviewer берут `GG_REASONING_MODEL`, fixer — `GG_FAST_MODEL`.
+История раундов хранится в состоянии задачи, последние находки видны в `heroflow status`.
+
 ## Промпты
 
 Тексты промптов лежат в `src/heroflow/prompts/<флоу>/<узел>.md.j2` (Jinja2). Неизвестная переменная в

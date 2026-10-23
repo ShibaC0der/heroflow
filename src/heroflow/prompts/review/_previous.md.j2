@@ -1,0 +1,9 @@
+{% if previous %}
+
+<previous_review>
+Находки прошлой итерации. Проверь, исправлены ли они, и не повторяй исправленное:
+{% for f in previous %}
+{{ f.as_markdown() }}
+{% endfor %}
+</previous_review>
+{% endif %}

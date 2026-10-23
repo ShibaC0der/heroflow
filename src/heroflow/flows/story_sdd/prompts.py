@@ -14,10 +14,6 @@ def propose(ctx: TaskContext, change_name: str) -> str:
     return render("story_sdd/propose.md.j2", ctx=ctx, change_name=change_name)
 
 
-def review_proposal(ctx: TaskContext) -> str:
-    return render("story_sdd/review_proposal.md.j2", ctx=ctx)
-
-
 def fix_spec_comments(ctx: TaskContext, comments_md: str) -> str:
     return render("story_sdd/fix_spec_comments.md.j2", ctx=ctx, comments=comments_md)
 

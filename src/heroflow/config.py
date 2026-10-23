@@ -95,6 +95,10 @@ class GigaCodeConfig(ConfigBase):
     fast_model: str | None = None
     reasoning_model: str | None = None
     permission_mode: str = "auto-edit"
+    # Чем ограничить ревьюверов: имена инструментов Qwen Code / GigaCode, которые пишут файлы или запускают команды
+    readonly_exclude_tools: list[str] = Field(
+        default_factory=lambda: ["write_file", "edit", "run_shell_command", "monitor", "agent"]
+    )
 
     @property
     def model(self) -> str | None:

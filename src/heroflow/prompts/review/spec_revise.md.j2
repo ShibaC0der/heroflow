@@ -1,0 +1,32 @@
+Ты автор OpenSpec-спецификации `{{ ctx.delta_spec_dir }}`. Два независимых ревьювера прочитали её; доработай спеку по их находкам.
+
+<task>
+{{ ctx.jira.summary }}
+
+{{ ctx.jira.description }}
+</task>
+
+<architect_review verdict="{{ round.architect.verdict }}">
+{{ round.architect.summary }}
+{% for f in round.architect.findings %}
+{{ f.as_markdown() }}
+{% endfor %}
+</architect_review>
+
+<critic_review verdict="{{ round.critic.verdict }}">
+{{ round.critic.summary }}
+{% for f in round.critic.findings %}
+{{ f.as_markdown() }}
+{% endfor %}
+</critic_review>
+
+Исследование кодовой базы: `{{ ctx.explore_file }}`.
+{% include "common/_context.md.j2" %}
+
+# Как работать
+- Исправь все `blocker` и `major`. `minor` — на твоё усмотрение.
+- Если находка, по-твоему, неверна, не исправляй её, а коротко объясни почему в разделе «Открытые вопросы» design.md: следующий раунд ревью это увидит.
+- Если ревьюверы противоречат друг другу, выбери вариант, который лучше соответствует задаче, и зафиксируй выбор.
+- Держи proposal.md, design.md, tasks.md и spec.md согласованными между собой.
+- Веди в design.md раздел «Решение (ADR)»: решение, рассмотренные альтернативы, почему выбрано это, последствия.
+- Не делай git-коммит: heroflow коммитит сам после каждой итерации.

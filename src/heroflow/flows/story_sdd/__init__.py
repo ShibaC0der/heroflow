@@ -11,10 +11,11 @@ from heroflow.flows.story_sdd.nodes import (
     InitSandbox,
     Propose,
     ResolveDeltaSpecDir,
-    SelfReviewSpec,
     Verify,
 )
 from heroflow.nodes.context import GatherContext
+from heroflow.nodes.human import HumanDecision
+from heroflow.nodes.review import CodeReviewFix, Ralplan
 
 HUMAN_REVIEW_SPEC = "human_review_proposal"
 HUMAN_REVIEW_CODE = "human_review_impl"
@@ -28,8 +29,13 @@ FLOW = Flow(
         Explore(),
         Propose(),
         ResolveDeltaSpecDir(),
+        Ralplan(max_rounds=5),
+        HumanDecision(
+            "ralplan_gate",
+            "Ревьюверы спеки не сошлись за 5 раундов. Продолжить с текущей спекой? "
+            "(Нет — пауза: поправьте спеку в ветке и запустите heroflow resume)",
+        ),
         AddSddLabel(),
-        SelfReviewSpec(),
         CreatePullRequest(),
         HumanReview(
             HUMAN_REVIEW_SPEC,
@@ -39,6 +45,11 @@ FLOW = Flow(
         ),
         Apply(),
         Verify(),
+        CodeReviewFix(max_rounds=3),
+        HumanDecision(
+            "code_review_gate",
+            "Ревью кода не сошлось за 3 раунда, находки в heroflow status. Отдать код на ревью человеку?",
+        ),
         HumanReview(
             HUMAN_REVIEW_CODE,
             "Есть ли замечания на Code Review?",
@@ -49,20 +60,17 @@ FLOW = Flow(
         CleanupSpecChanges(),
     ),
     edges={
-        **linear(
-            "init_sandbox",
-            "gather_context",
-            "explore",
-            "opsx_propose",
-            "resolve_delta_spec_dir",
-            "add_sdd_label",
-            "review_proposal",
-            "create_pull_request",
-            HUMAN_REVIEW_SPEC,
-        ),
+        **linear("init_sandbox", "gather_context", "explore", "opsx_propose", "resolve_delta_spec_dir", "ralplan"),
+        ("ralplan", Outcome.APPROVE): "add_sdd_label",
+        ("ralplan", Outcome.STUCK): "ralplan_gate",
+        ("ralplan_gate", Outcome.OK): "add_sdd_label",
+        **linear("add_sdd_label", "create_pull_request", HUMAN_REVIEW_SPEC),
         (HUMAN_REVIEW_SPEC, Outcome.ITERATE): HUMAN_REVIEW_SPEC,
         (HUMAN_REVIEW_SPEC, Outcome.APPROVE): "opsx_apply",
-        **linear("opsx_apply", "opsx_verify", HUMAN_REVIEW_CODE),
+        **linear("opsx_apply", "opsx_verify", "code_review"),
+        ("code_review", Outcome.APPROVE): HUMAN_REVIEW_CODE,
+        ("code_review", Outcome.STUCK): "code_review_gate",
+        ("code_review_gate", Outcome.OK): HUMAN_REVIEW_CODE,
         (HUMAN_REVIEW_CODE, Outcome.ITERATE): HUMAN_REVIEW_CODE,
         (HUMAN_REVIEW_CODE, Outcome.APPROVE): "attach_spec_file_to_jira_task",
         **linear("attach_spec_file_to_jira_task", "remove_unnecessary_spec_changes", END),
