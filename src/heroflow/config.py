@@ -147,6 +147,31 @@ class ContextConfig(ConfigBase):
     repos: dict[str, ContextRepoConfig] = Field(default_factory=dict)
 
 
+class SkillsConfig(ConfigBase):
+    """Скиллы Qwen Code / GigaCode, которые узлы флоу подключают к своему вызову агента.
+
+    Скилл ищется по имени: встроенные скиллы heroflow, папки из `dirs`, ~/.qwen/skills,
+    расширения (~/.qwen/extensions/*/skills) и .qwen/skills самого репозитория.
+    Репозиторий может дополнить привязку файлом .heroflow.yaml: `skills: {узел: [скилл, ...]}`.
+    """
+
+    model_config = SettingsConfigDict(env_prefix="hf_skills_")
+    section = "skills"
+
+    # Где CLI держит пользовательские скиллы и расширения
+    qwen_home: str = "~/.qwen"
+    # Дополнительные папки со скиллами: <папка>/<скилл>/SKILL.md
+    dirs: list[str] = Field(default_factory=list)
+    # Узел -> скиллы. ponytail ставится отдельно: qwen extensions install DietrichGebert/ponytail:ponytail
+    nodes: dict[str, list[str]] = Field(
+        default_factory=lambda: {
+            "ralph": ["ponytail"],
+            "code_review_fix": ["ponytail"],
+            "code_review_review": ["kotlin-review", "ponytail-review"],
+        }
+    )
+
+
 class Config(BaseSettings):
     bitbucket: BitbucketConfig = Field(default_factory=lambda: BitbucketConfig())  # type: ignore[call-arg]
     jira: JiraConfig = Field(default_factory=lambda: JiraConfig())  # type: ignore[call-arg]
@@ -154,6 +179,7 @@ class Config(BaseSettings):
     http: HttpConfig = Field(default_factory=HttpConfig)
     context: ContextConfig = Field(default_factory=ContextConfig)
     checks: ChecksConfig = Field(default_factory=ChecksConfig)
+    skills: SkillsConfig = Field(default_factory=SkillsConfig)
 
 
 @lru_cache

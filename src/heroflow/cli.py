@@ -3,15 +3,17 @@ from __future__ import annotations
 import logging
 import sys
 from datetime import datetime
+from pathlib import Path
 from typing import Annotated
 
 import typer
 from rich.console import Console
 from rich.table import Table
 
-from heroflow.config import get_config
+from heroflow.config import SkillsConfig, get_config
 from heroflow.engine import Env, TaskContext, TaskState, TaskStatus, TaskStore, run_flow
 from heroflow.flows import FLOWS, flow_for_issue_type, get_flow
+from heroflow.skills import available_skills, node_skills
 
 app = typer.Typer(help="heroflow: задача из Jira -> спека -> код -> PR", no_args_is_help=True)
 console = Console()
@@ -138,6 +140,30 @@ def list_tasks() -> None:
             _ago(s.updated_at),
         )
     console.print(table)
+
+
+@app.command()
+def skills(
+    repo: Annotated[
+        Path | None, typer.Option(help="Репозиторий проекта: учесть его .heroflow.yaml и .qwen/skills")
+    ] = None,
+) -> None:
+    """Какие скиллы подключены к узлам и нашлись ли они."""
+    config = SkillsConfig()
+    found = available_skills(repo, config)
+    table = Table("Узел", "Скилл", "Где")
+    missing = False
+    for node, names in sorted(node_skills(repo, config).items()):
+        for name in names:
+            skill = found.get(name)
+            missing = missing or skill is None
+            table.add_row(node, name, str(skill.path) if skill else "[red]не найден[/]")
+    console.print(table)
+    if missing:
+        console.print(
+            "Ненайденные скиллы узлы пропускают. ponytail ставится так: "
+            "[bold]qwen extensions install DietrichGebert/ponytail:ponytail[/]"
+        )
 
 
 @app.command()

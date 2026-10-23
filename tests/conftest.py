@@ -7,7 +7,15 @@ from pathlib import Path
 
 import pytest
 
-from heroflow.config import BitbucketConfig, ChecksConfig, Config, GigaCodeConfig, HttpConfig, JiraConfig
+from heroflow.config import (
+    BitbucketConfig,
+    ChecksConfig,
+    Config,
+    GigaCodeConfig,
+    HttpConfig,
+    JiraConfig,
+    SkillsConfig,
+)
 from heroflow.engine import Env, JiraAttachment, JiraTask, PullRequest, TaskContext
 from heroflow.ports import PrComment
 
@@ -127,6 +135,8 @@ def make_config() -> Config:
         http=HttpConfig(),
         # Проверки проекта в тестах: зелёные, пока в репозитории нет файла BROKEN
         checks=ChecksConfig(commands=["test ! -f BROKEN"], timeout_s=30),
+        # Пользовательские скиллы машины, на которой идут тесты, не должны влиять на результат
+        skills=SkillsConfig(qwen_home="/nonexistent/.qwen"),
     )
 
 

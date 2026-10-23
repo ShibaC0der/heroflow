@@ -18,6 +18,7 @@ uv run heroflow resume PAY-123                                    # продол
 uv run heroflow list                                              # все задачи: название, узел, статус, PR
 uv run heroflow status PAY-123                                    # история узлов с исходами и временем
 uv run heroflow clean --done [--failed] [PAY-1 PAY-2] [--yes]     # удалить папки задач
+uv run heroflow skills [--repo path]                              # какие скиллы подключены к узлам
 ```
 
 Данные задачи лежат в `~/.heroflow/tasks/<KEY>/`: `repo/` (клон), `state.json` (состояние),
@@ -126,6 +127,41 @@ checks:
   `/hf`-комментариям к коду. Красные проверки возвращаются агенту выводом, со второй неудачи правки
   откатываются.
 
+## Скиллы
+
+Узлы могут подключать скиллы Qwen Code / GigaCode (папка с `SKILL.md`). heroflow добавляет в промпт
+узла список его скиллов с описаниями, а агент загружает их сам.
+
+Где ищутся скиллы, от дальнего к ближнему (при совпадении имён побеждает ближний):
+
+1. встроенные в heroflow: `src/heroflow/skills_builtin/` (сейчас `kotlin-review`, чек-лист ревью Kotlin);
+2. папки из `skills.dirs` в конфиге, например общий репозиторий скиллов команды;
+3. расширения CLI: `~/.qwen/extensions/*/skills`;
+4. `~/.qwen/skills`;
+5. `.qwen/skills` самого репозитория.
+
+Встроенные скиллы и скиллы из `skills.dirs` CLI сам не видит, поэтому `init_sandbox` копирует нужные в
+`<repo>/.qwen/skills/` и прячет их через `.git/info/exclude`: в коммиты они не попадают.
+
+Привязка по умолчанию:
+
+```yaml
+skills:
+  nodes:
+    ralph: [ponytail]                                  # реализация: минимум кода, тесты на рискованную логику
+    code_review_fix: [ponytail]
+    code_review_review: [kotlin-review, ponytail-review]
+```
+
+Ponytail ставится как расширение: `qwen extensions install DietrichGebert/ponytail:ponytail`
+(для GigaCode — аналогичной командой его CLI). Если скилл не найден, узел работает без него, а
+`heroflow skills` покажет, чего не хватает. Репозиторий может переопределить привязку в `.heroflow.yaml`:
+
+```yaml
+skills:
+  ralph: [ponytail, team-style]
+```
+
 ## Как устроено
 
 ```
@@ -135,6 +171,8 @@ src/heroflow/
   nodes/         узлы, общие для флоу (GatherContext)
   prompts/       шаблоны промптов
   context.py     контракт блока heroflow в задаче Jira
+  skills.py      поиск скиллов, установка в песочницу, подсказка в промпте
+  skills_builtin/ встроенные скиллы
   integrations/  git, Jira, Bitbucket, GigaCode, ввод в терминале
   ports.py       интерфейсы внешних систем (в тестах — фейки)
   cli.py         команды heroflow

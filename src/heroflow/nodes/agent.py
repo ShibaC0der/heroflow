@@ -12,6 +12,7 @@ from pydantic import BaseModel, ValidationError
 from heroflow.engine import Env, TaskContext
 from heroflow.integrations.git import Git
 from heroflow.prompts import render
+from heroflow.skills import skills_hint
 
 log = logging.getLogger(__name__)
 
@@ -41,8 +42,9 @@ def call_agent(node: str, ctx: TaskContext, env: Env, prompt: str, *, role: Role
     gg = env.config.gigacode
     readonly = role is Role.REVIEWER
     writes_code = role in (Role.WORKER, Role.FIXER)
+    hint = skills_hint(node, ctx.repo_path, env.config.skills)
     return env.agent.run(
-        prompt,
+        f"{prompt}\n\n{hint}" if hint else prompt,
         ctx.repo_path,
         model=model_for(role, env),
         append_system_prompt=render("common/system.md.j2"),

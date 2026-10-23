@@ -11,6 +11,7 @@ from heroflow.flows.story_sdd import prompts
 from heroflow.integrations.checks import run_checks
 from heroflow.integrations.git import Git
 from heroflow.nodes.agent import Role, call_agent
+from heroflow.skills import install_skills
 
 log = logging.getLogger(__name__)
 
@@ -29,6 +30,9 @@ class InitSandbox:
         git.clone(env.config.bitbucket.repo_clone_url)
         git.fetch()
         git.checkout_work_branch(ctx.branch_name, ctx.base_branch)
+        installed = install_skills(ctx.repo_path, env.config.skills)
+        if installed:
+            log.info("Скиллы в песочнице: %s", ", ".join(installed))
         return Outcome.OK
 
 
