@@ -50,7 +50,7 @@ def test_full_story_flow(origin: Path, tmp_path: Path, world: World) -> None:
         write(cwd, CHANGE / "specs/payments/spec.md", "## Requirements\nлимит 100\n")
 
     def apply(prompt: str, cwd: Path) -> None:
-        write(cwd, "src/Limits.kt", "class Limits\n")
+        write(cwd, "src/Limits.py", "class Limits: ...\n")
 
     world.agent.scripts = {
         "explore": explore,
@@ -80,7 +80,7 @@ def test_full_story_flow(origin: Path, tmp_path: Path, world: World) -> None:
     assert str(CHANGE / "proposal.md") not in files
     assert "openspec/changes/explore-PAY-1.md" not in files
     assert "openspec/changes/other-team-change/proposal.md" in files
-    assert "src/Limits.kt" in files
+    assert "src/Limits.py" in files
 
 
 def test_spec_without_changes_on_verify_does_not_crash(origin: Path, tmp_path: Path, world: World) -> None:

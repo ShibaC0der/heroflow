@@ -54,17 +54,7 @@ edges = {
 Исходы: `ok`, `approve`, `iterate`, `stuck`, `need_human`. Если для `need_human` нет ребра, движок
 сохраняет задачу со статусом `waiting_human` и выходит.
 
-## Python для котлиниста
-
-| Kotlin | Здесь |
-|---|---|
-| Gradle | `uv` (`uv sync`, `uv run`, `uv.lock`) |
-| data class | pydantic `BaseModel`, `@dataclass(frozen=True)` |
-| sealed class + when | `StrEnum` + таблица рёбер / `match` |
-| interface | `typing.Protocol` (см. `ports.py`) |
-| null-safety | `str \| None` + `mypy --strict` |
-| detekt / ktlint | `ruff check`, `ruff format` |
-| JUnit | `pytest` |
+## Разработка
 
 Проверки перед коммитом:
 
