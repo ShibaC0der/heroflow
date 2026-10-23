@@ -156,6 +156,14 @@ def status(issue_key: Annotated[str, typer.Argument(help="Ключ задачи 
         console.print(f"PR: {s.context.pull_request.url}")
     if s.error:
         console.print(f"[red]{s.error}[/]")
+    ralph = s.context.ralph
+    if ralph.iterations:
+        console.print(f"\n[bold]ralph[/], итераций: {ralph.iterations}, текущий пункт: {ralph.current_task or '-'}")
+        if ralph.stuck_reason:
+            console.print(f"  [magenta]застрял: {ralph.stuck_reason}[/]")
+        if ralph.last_failure:
+            console.print("  последнее падение проверок:")
+            console.print("    " + "\n    ".join(ralph.last_failure.splitlines()[-15:]))
     if s.context.ralplan:
         last = s.context.ralplan[-1]
         console.print(f"\n[bold]ralplan[/], раундов: {len(s.context.ralplan)}")

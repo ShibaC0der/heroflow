@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from heroflow.config import BitbucketConfig, Config, GigaCodeConfig, HttpConfig, JiraConfig
+from heroflow.config import BitbucketConfig, ChecksConfig, Config, GigaCodeConfig, HttpConfig, JiraConfig
 from heroflow.engine import Env, JiraAttachment, JiraTask, PullRequest, TaskContext
 from heroflow.ports import PrComment
 
@@ -98,6 +98,7 @@ class FakeAgent:
         model: str | None = None,
         system_prompt: str | None = None,
         exclude_tools: list[str] | None = None,
+        allowed_tools: list[str] | None = None,
         log_file: Path | None = None,
     ) -> str:
         node = log_file.stem.rsplit("-", 1)[0] if log_file else "?"
@@ -123,6 +124,8 @@ def make_config() -> Config:
         jira=JiraConfig(token="t", url="https://jira"),
         gigacode=GigaCodeConfig(),
         http=HttpConfig(),
+        # Проверки проекта в тестах: зелёные, пока в репозитории нет файла BROKEN
+        checks=ChecksConfig(commands=["test ! -f BROKEN"], timeout_s=30),
     )
 
 

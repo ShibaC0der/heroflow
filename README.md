@@ -64,7 +64,8 @@ context:
 init_sandbox -> gather_context -> explore -> opsx_propose -> resolve_delta_spec_dir -> ralplan
 ralplan --approve--> add_sdd_label -> create_pull_request -> human_review_proposal (цикл по /hf)
 ralplan --stuck----> ralplan_gate (человек: продолжить или пауза) --ok--> add_sdd_label
-human_review_proposal --approve--> opsx_apply -> opsx_verify -> code_review
+human_review_proposal --approve--> ralph
+ralph --ok--> code_review;  ralph --stuck--> ralph_gate --ok--> ralph
 code_review --approve--> human_review_impl (цикл по /hf) --approve--> attach_spec -> cleanup -> END
 code_review --stuck----> code_review_gate --ok--> human_review_impl
 ```
@@ -78,6 +79,32 @@ code_review --stuck----> code_review_gate --ok--> human_review_impl
 **code_review** — ревьювер (только чтение, видит diff от базовой ветки) и фиксер (правит только находки
 `blocker` и `major`). До 3 раундов. Ревьюверам отключаются инструменты записи и shell
 (`gigacode.readonly_exclude_tools`); если ревьювер всё же что-то поменял, изменения откатываются.
+
+**ralph** — реализация по Ralph loop. Каждая итерация — свежая сессия агента и один пункт `tasks.md`.
+Память между итерациями — `tasks.md`, журнал `.heroflow-context/ralph/progress.md` и git. После итерации
+heroflow сам запускает проверки проекта: зелёный шаг отмечается в `tasks.md`, коммитится и пушится, красный
+остаётся в рабочей папке, и следующая итерация получает вывод упавшей проверки. Стоп: всё отмечено и зелёно
+(OK); агент написал `HEROFLOW_STUCK: причина`, 3 красных подряд или кончился бюджет в 30 итераций (STUCK →
+`ralph_gate`, можно поправить руками и продолжить). Отдельного `opsx:verify` больше нет: соответствие спеке
+проверяет `code_review`, а правки фиксера тоже проходят через проверки и откатываются, если их ломают.
+
+Проверки задаются в конфиге или в `.heroflow.yaml` в корне целевого репозитория:
+
+```yaml
+# ~/.heroflow/config.yaml
+checks:
+  commands: ["./gradlew build detekt test"]
+  timeout_s: 1800
+gigacode:
+  # чтобы агент мог сам гонять сборку без подтверждения
+  allowed_tools: ["run_shell_command(./gradlew)"]
+```
+
+```yaml
+# <repo>/.heroflow.yaml — перекрывает checks.commands для этого репозитория
+checks:
+  - ./gradlew :service:build :service:detekt :service:test
+```
 
 Модели по ролям: planner и reviewer берут `GG_REASONING_MODEL`, fixer — `GG_FAST_MODEL`.
 История раундов хранится в состоянии задачи, последние находки видны в `heroflow status`.

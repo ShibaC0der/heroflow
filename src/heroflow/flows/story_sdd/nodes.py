@@ -147,29 +147,6 @@ class HumanReview:
         return Outcome.ITERATE
 
 
-class Apply:
-    name = "opsx_apply"
-
-    def run(self, ctx: TaskContext, env: Env) -> Outcome:
-        log.info("Реализация задачи")
-        call_agent(self.name, ctx, env, prompts.apply(ctx))
-        git = Git(ctx.repo_path)
-        if git.commit_all(f"impl done. {ctx.issue_key}"):
-            git.push(ctx.branch_name)
-        return Outcome.OK
-
-
-class Verify:
-    name = "opsx_verify"
-
-    def run(self, ctx: TaskContext, env: Env) -> Outcome:
-        call_agent(self.name, ctx, env, prompts.verify(ctx))
-        git = Git(ctx.repo_path)
-        if git.commit_all(f"audit spec and code done. {ctx.issue_key}"):
-            git.push(ctx.branch_name)
-        return Outcome.OK
-
-
 def spec_files(ctx: TaskContext) -> list[Path]:
     if not ctx.delta_spec_dir:
         return []

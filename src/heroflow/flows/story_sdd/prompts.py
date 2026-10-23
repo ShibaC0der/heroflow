@@ -18,13 +18,5 @@ def fix_spec_comments(ctx: TaskContext, comments_md: str) -> str:
     return render("story_sdd/fix_spec_comments.md.j2", ctx=ctx, comments=comments_md)
 
 
-def apply(ctx: TaskContext) -> str:
-    return render("story_sdd/apply.md.j2", ctx=ctx)
-
-
-def verify(ctx: TaskContext) -> str:
-    return render("story_sdd/verify.md.j2", ctx=ctx)
-
-
 def fix_code_comments(ctx: TaskContext, comments_md: str) -> str:
     return render("story_sdd/fix_code_comments.md.j2", ctx=ctx, comments=comments_md)

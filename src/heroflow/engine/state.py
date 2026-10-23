@@ -96,6 +96,16 @@ class RalplanRound(BaseModel):
     critic: Review
 
 
+class RalphState(BaseModel):
+    """Счётчики Ralph loop. Память между итерациями — progress.md и git, а не контекст агента."""
+
+    iterations: int = 0
+    failures_in_row: int = 0
+    current_task: str | None = None
+    last_failure: str = ""
+    stuck_reason: str = ""
+
+
 class ContextRepo(BaseModel):
     """Внешний репозиторий, склонированный как контекст (например, системная аналитика)."""
 
@@ -124,6 +134,7 @@ class TaskContext(BaseModel):
     # История ревью по узлам: продолжение после resume и материал для описания PR
     reviews: dict[str, list[Review]] = Field(default_factory=dict)
     ralplan: list[RalplanRound] = Field(default_factory=list)
+    ralph: RalphState = Field(default_factory=RalphState)
 
     @property
     def repo_path(self) -> Path:

@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import logging
 
-from heroflow.engine import Env, Outcome, RalplanRound, Review, Severity, TaskContext, Verdict
+from heroflow.engine import Env, Finding, Outcome, RalplanRound, Review, Severity, TaskContext, Verdict
 from heroflow.engine.state import CONTEXT_DIR_NAME
+from heroflow.integrations.checks import run_checks
 from heroflow.integrations.git import Git
 from heroflow.nodes.agent import Role, ask_structured, call_agent
 from heroflow.prompts import render
@@ -52,14 +53,25 @@ class CodeReviewFix:
             if len(history) >= self.max_rounds:
                 break
 
-            call_agent(
-                f"{self.name}_fix", ctx, env, render("review/code_fix.md.j2", ctx=ctx, findings=to_fix), role=Role.FIXER
-            )
-            if git.commit_all(f"fix code review round {len(history)}. {ctx.issue_key}"):
+            if self._fix(ctx, env, to_fix) and git.commit_all(f"fix code review round {len(history)}. {ctx.issue_key}"):
                 git.push(ctx.branch_name)
 
         log.warning("Ревью кода не сошлось за %s раунда", self.max_rounds)
         return Outcome.STUCK
+
+    def _fix(self, ctx: TaskContext, env: Env, findings: list[Finding]) -> bool:
+        """Фиксер правит, heroflow проверяет. Две попытки получить зелёные проверки, иначе правки откатываются."""
+        failure = ""
+        for _ in range(2):
+            prompt = render("review/code_fix.md.j2", ctx=ctx, findings=findings, failure=failure)
+            call_agent(f"{self.name}_fix", ctx, env, prompt, role=Role.FIXER)
+            result = run_checks(ctx.repo_path, env.config.checks)
+            if result.ok:
+                return True
+            failure = f"$ {result.command}\n{result.output}"
+        log.warning("Правки по ревью ломают проверки, откатываю их")
+        Git(ctx.repo_path).discard_changes()
+        return False
 
 
 def ralplan_approved(round_: RalplanRound) -> bool:

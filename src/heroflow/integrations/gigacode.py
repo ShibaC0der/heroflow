@@ -46,6 +46,7 @@ class GigaCodeAgent:
         model: str | None = None,
         system_prompt: str | None = None,
         exclude_tools: list[str] | None = None,
+        allowed_tools: list[str] | None = None,
         log_file: Path | None = None,
     ) -> str:
         from qwen_code_sdk import is_sdk_result_message, query_sync
@@ -65,6 +66,8 @@ class GigaCodeAgent:
             options["system_prompt"] = system_prompt
         if exclude_tools:
             options["exclude_tools"] = exclude_tools
+        if allowed_tools:
+            options["allowed_tools"] = allowed_tools
 
         transcript = None
         if log_file:

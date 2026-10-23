@@ -32,6 +32,10 @@ def test_every_template_renders(template: str, tmp_path: Path) -> None:
         findings=[finding],
         round=RalplanRound(architect=review, critic=review),
         diff_file=".heroflow-context/review/diff.patch",
+        failure="$ ./gradlew build\nFAILED",
+        step="1. Модель",
+        pending_count=2,
+        progress_file=".heroflow-context/ralph/progress.md",
     )
     assert text
     assert "{{" not in text

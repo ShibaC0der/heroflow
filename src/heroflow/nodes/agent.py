@@ -37,12 +37,15 @@ def call_agent(node: str, ctx: TaskContext, env: Env, prompt: str, *, role: Role
     """Вызов агента с логом всей траектории в tasks/<KEY>/logs/<узел>-<N>.jsonl."""
     ctx.logs_dir.mkdir(parents=True, exist_ok=True)
     n = len(list(ctx.logs_dir.glob(f"{node}-*.jsonl"))) + 1
+    gg = env.config.gigacode
     readonly = role is Role.REVIEWER
+    writes_code = role in (Role.WORKER, Role.FIXER)
     return env.agent.run(
         prompt,
         ctx.repo_path,
         model=model_for(role, env),
-        exclude_tools=env.config.gigacode.readonly_exclude_tools if readonly else None,
+        exclude_tools=gg.readonly_exclude_tools if readonly else None,
+        allowed_tools=gg.allowed_tools if writes_code and gg.allowed_tools else None,
         log_file=ctx.logs_dir / f"{node}-{n}.jsonl",
     )
 

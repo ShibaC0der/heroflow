@@ -49,14 +49,15 @@ def test_full_story_flow(origin: Path, tmp_path: Path, world: World) -> None:
         assert "уточни лимит" in prompt
         write(cwd, CHANGE / "specs/payments/spec.md", "## Requirements\nлимит 100\n")
 
-    def apply(prompt: str, cwd: Path) -> None:
+    def implement(prompt: str, cwd: Path) -> None:
+        assert "«1»" in prompt
         write(cwd, "src/Limits.kt", "class Limits\n")
 
     world.agent.scripts = {
         "explore": explore,
         "opsx_propose": propose,
         "human_review_proposal": fix_spec,
-        "opsx_apply": apply,
+        "ralph": implement,
     }
     world.bitbucket.comments = [PrComment(id=7, author="alex", text="уточни лимит", file=str(CHANGE / "spec.md"))]
     # spec: «есть замечания» -> правка; «есть замечания» -> новых нет; «нет»; code review: «нет»
@@ -81,10 +82,11 @@ def test_full_story_flow(origin: Path, tmp_path: Path, world: World) -> None:
     assert "openspec/changes/explore-PAY-1.md" not in files
     assert "openspec/changes/other-team-change/proposal.md" in files
     assert "src/Limits.kt" in files
+    assert result.context.ralph.iterations == 1
 
 
-def test_spec_without_changes_on_verify_does_not_crash(origin: Path, tmp_path: Path, world: World) -> None:
-    """Агент ничего не поменял на шагах verify и self-review: раньше commit_all падал."""
+def test_nodes_without_changes_do_not_crash(origin: Path, tmp_path: Path, world: World) -> None:
+    """Агент ничего не поменял на ревью и в конце: раньше commit_all падал."""
     store = TaskStore(tmp_path / "tasks")
     ctx = make_context(store.task_dir("PAY-1"))
     ctx.delta_spec_dir = CHANGE.as_posix()
@@ -93,7 +95,7 @@ def test_spec_without_changes_on_verify_does_not_crash(origin: Path, tmp_path: P
     repo.fetch()
     repo.checkout_work_branch(ctx.branch_name, ctx.base_branch)
 
-    state = TaskState(context=ctx, current_node="opsx_verify")
+    state = TaskState(context=ctx, current_node="code_review")
     world.human.answers = [False]
     result = run_flow(FLOW, state, world.env, store)
 

@@ -2,7 +2,6 @@ from heroflow.engine import END, Flow, Outcome, linear
 from heroflow.flows.story_sdd import prompts
 from heroflow.flows.story_sdd.nodes import (
     AddSddLabel,
-    Apply,
     AttachSpecToJira,
     CleanupSpecChanges,
     CreatePullRequest,
@@ -11,10 +10,10 @@ from heroflow.flows.story_sdd.nodes import (
     InitSandbox,
     Propose,
     ResolveDeltaSpecDir,
-    Verify,
 )
 from heroflow.nodes.context import GatherContext
 from heroflow.nodes.human import HumanDecision
+from heroflow.nodes.ralph import RalphImplement
 from heroflow.nodes.review import CodeReviewFix, Ralplan
 
 HUMAN_REVIEW_SPEC = "human_review_proposal"
@@ -43,8 +42,12 @@ FLOW = Flow(
             prompts.fix_spec_comments,
             "fix spec review issues. {key}. [skip ci]",
         ),
-        Apply(),
-        Verify(),
+        RalphImplement(max_iterations=30, max_failures_in_row=3),
+        HumanDecision(
+            "ralph_gate",
+            "Реализация застряла, причина в heroflow status. Продолжить цикл? "
+            "(Можно сначала поправить код в ветке. Нет — пауза до heroflow resume)",
+        ),
         CodeReviewFix(max_rounds=3),
         HumanDecision(
             "code_review_gate",
@@ -66,8 +69,10 @@ FLOW = Flow(
         ("ralplan_gate", Outcome.OK): "add_sdd_label",
         **linear("add_sdd_label", "create_pull_request", HUMAN_REVIEW_SPEC),
         (HUMAN_REVIEW_SPEC, Outcome.ITERATE): HUMAN_REVIEW_SPEC,
-        (HUMAN_REVIEW_SPEC, Outcome.APPROVE): "opsx_apply",
-        **linear("opsx_apply", "opsx_verify", "code_review"),
+        (HUMAN_REVIEW_SPEC, Outcome.APPROVE): "ralph",
+        ("ralph", Outcome.OK): "code_review",
+        ("ralph", Outcome.STUCK): "ralph_gate",
+        ("ralph_gate", Outcome.OK): "ralph",
         ("code_review", Outcome.APPROVE): HUMAN_REVIEW_CODE,
         ("code_review", Outcome.STUCK): "code_review_gate",
         ("code_review_gate", Outcome.OK): HUMAN_REVIEW_CODE,
@@ -75,7 +80,14 @@ FLOW = Flow(
         (HUMAN_REVIEW_CODE, Outcome.APPROVE): "attach_spec_file_to_jira_task",
         **linear("attach_spec_file_to_jira_task", "remove_unnecessary_spec_changes", END),
     },
-    max_visits={HUMAN_REVIEW_SPEC: 50, HUMAN_REVIEW_CODE: 50},
+    max_visits={
+        HUMAN_REVIEW_SPEC: 50,
+        HUMAN_REVIEW_CODE: 50,
+        "ralph": 10,
+        "ralph_gate": 10,
+        "ralplan_gate": 10,
+        "code_review_gate": 10,
+    },
     default_max_visits=1,
 )
 

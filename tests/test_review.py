@@ -130,6 +130,10 @@ class TestRalplan:
 
 def test_ralplan_stuck_pauses_for_human_and_resume_continues(ctx: TaskContext, tmp_path: Path, world: World) -> None:
     store = TaskStore(tmp_path / "tasks")
+    tasks = ctx.repo_path / "openspec/changes/pay-1/tasks.md"
+    tasks.parent.mkdir(parents=True)
+    tasks.write_text("- [ ] 1. Модель\n", encoding="utf-8")
+    Git(ctx.repo_path).commit_all("spec")
     world.agent.scripts["ralplan_critic"] = lambda p, c: verdict("ITERATE", ("major", "нет сценария"))
     world.human.answers = [False]
 
