@@ -97,6 +97,7 @@ class FakeAgent:
         *,
         model: str | None = None,
         system_prompt: str | None = None,
+        append_system_prompt: str | None = None,
         exclude_tools: list[str] | None = None,
         allowed_tools: list[str] | None = None,
         log_file: Path | None = None,

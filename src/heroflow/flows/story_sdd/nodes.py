@@ -8,6 +8,7 @@ from pathlib import Path
 
 from heroflow.engine import Env, Outcome, TaskContext
 from heroflow.flows.story_sdd import prompts
+from heroflow.integrations.checks import run_checks
 from heroflow.integrations.git import Git
 from heroflow.nodes.agent import Role, call_agent
 
@@ -117,11 +118,14 @@ class HumanReview:
         question: str,
         prompt: Callable[[TaskContext, str], str],
         commit_message: str,
+        run_checks: bool = False,
     ) -> None:
         self.name = name
         self.question = question
         self.prompt = prompt
         self.commit_message = commit_message
+        # Для правок кода: heroflow сам проверяет сборку и тесты после фиксера
+        self.run_checks = run_checks
 
     def run(self, ctx: TaskContext, env: Env) -> Outcome:
         if not env.human.confirm(self.question):
@@ -141,10 +145,27 @@ class HumanReview:
         call_agent(self.name, ctx, env, self.prompt(ctx, comments_md), role=Role.FIXER)
 
         git = Git(ctx.repo_path)
+        if self.run_checks and not self._checks_green(ctx, env, comments_md):
+            log.warning("Правки по замечаниям ломают проверки, откатываю. Замечания возьмём в следующий раз")
+            git.discard_changes()
+            return Outcome.ITERATE
         if git.commit_all(self.commit_message.format(key=ctx.issue_key)):
             git.push(ctx.branch_name)
         ctx.processed_comment_ids.extend(c.id for c in comments)
         return Outcome.ITERATE
+
+    def _checks_green(self, ctx: TaskContext, env: Env, comments_md: str) -> bool:
+        result = run_checks(ctx.repo_path, env.config.checks)
+        if result.ok:
+            return True
+        failure = f"$ {result.command}\n{result.output}"
+        retry = (
+            f"{self.prompt(ctx, comments_md)}\n\n# Проверки упали\n"
+            "После твоих правок проверки heroflow красные. Почини причину:\n\n"
+            f"<check_output>\n{failure}\n</check_output>"
+        )
+        call_agent(self.name, ctx, env, retry, role=Role.FIXER)
+        return run_checks(ctx.repo_path, env.config.checks).ok
 
 
 def spec_files(ctx: TaskContext) -> list[Path]:

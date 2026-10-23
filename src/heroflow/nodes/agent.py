@@ -11,6 +11,7 @@ from pydantic import BaseModel, ValidationError
 
 from heroflow.engine import Env, TaskContext
 from heroflow.integrations.git import Git
+from heroflow.prompts import render
 
 log = logging.getLogger(__name__)
 
@@ -44,6 +45,7 @@ def call_agent(node: str, ctx: TaskContext, env: Env, prompt: str, *, role: Role
         prompt,
         ctx.repo_path,
         model=model_for(role, env),
+        append_system_prompt=render("common/system.md.j2"),
         exclude_tools=gg.readonly_exclude_tools if readonly else None,
         allowed_tools=gg.allowed_tools if writes_code and gg.allowed_tools else None,
         log_file=ctx.logs_dir / f"{node}-{n}.jsonl",

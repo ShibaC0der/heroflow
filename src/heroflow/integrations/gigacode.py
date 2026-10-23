@@ -45,6 +45,7 @@ class GigaCodeAgent:
         *,
         model: str | None = None,
         system_prompt: str | None = None,
+        append_system_prompt: str | None = None,
         exclude_tools: list[str] | None = None,
         allowed_tools: list[str] | None = None,
         log_file: Path | None = None,
@@ -64,6 +65,9 @@ class GigaCodeAgent:
             options["model"] = model
         if system_prompt:
             options["system_prompt"] = system_prompt
+        if append_system_prompt:
+            # Дополняем системный промпт CLI, а не заменяем: в нём описаны инструменты агента
+            options["append_system_prompt"] = append_system_prompt
         if exclude_tools:
             options["exclude_tools"] = exclude_tools
         if allowed_tools:

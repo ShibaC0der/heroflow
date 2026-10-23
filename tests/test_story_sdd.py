@@ -4,10 +4,11 @@ from pathlib import Path
 
 from conftest import World, git, make_context
 
-from heroflow.engine import TaskState, TaskStatus, TaskStore, run_flow
+from heroflow.engine import Outcome, PullRequest, TaskState, TaskStatus, TaskStore, run_flow
 from heroflow.flows.story_sdd import FLOW
 from heroflow.flows.story_sdd.nodes import find_delta_spec_dir
 from heroflow.integrations.git import Git
+from heroflow.nodes.agent import call_agent
 from heroflow.ports import PrComment
 
 CHANGE = Path("openspec/changes/pay-1")
@@ -101,3 +102,42 @@ def test_nodes_without_changes_do_not_crash(origin: Path, tmp_path: Path, world:
 
     assert result.status is TaskStatus.DONE, result.error
     assert world.jira.attachments == []
+
+
+def test_code_comment_fix_that_breaks_checks_is_rolled_back(origin: Path, tmp_path: Path, world: World) -> None:
+    store = TaskStore(tmp_path / "tasks")
+    ctx = make_context(store.task_dir("PAY-1"))
+    ctx.pull_request = PullRequest(id=42, url="https://bitbucket/pr/42")
+    repo = Git(ctx.repo_path)
+    repo.clone(str(origin))
+    repo.fetch()
+    repo.checkout_work_branch(ctx.branch_name, ctx.base_branch)
+
+    def breaks_build(prompt: str, cwd: Path) -> None:
+        write(cwd, "BROKEN", "")
+        write(cwd, "src/Limits.kt", "class Limits\n")
+
+    world.agent.scripts = {"human_review_impl": breaks_build}
+    world.bitbucket.comments = [PrComment(id=9, author="alex", text="переименуй класс")]
+    world.human.answers = [True]
+    node = FLOW.node("human_review_impl")
+
+    assert node.run(ctx, world.env) is Outcome.ITERATE
+    calls = [p for n, p in world.agent.calls if n == "human_review_impl"]
+    assert len(calls) == 2 and "Проверки упали" in calls[1]
+    assert not repo.has_changes(), "сломанные правки откатываются"
+    assert ctx.processed_comment_ids == [], "замечание остаётся необработанным"
+
+
+def test_agent_gets_common_system_prompt(world: World, tmp_path: Path) -> None:
+    seen: list[str | None] = []
+    original = world.agent.run
+
+    def spy(prompt: str, cwd: Path, **kwargs: object) -> str:
+        seen.append(kwargs.get("append_system_prompt"))  # type: ignore[arg-type]
+        return original(prompt, cwd, **kwargs)  # type: ignore[arg-type]
+
+    world.agent.run = spy  # type: ignore[method-assign]
+    ctx = make_context(tmp_path / "PAY-1")
+    call_agent("explore", ctx, world.env, "hi")
+    assert seen and seen[0] and ".heroflow-context" in seen[0]

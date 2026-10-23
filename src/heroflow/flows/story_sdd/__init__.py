@@ -58,6 +58,7 @@ FLOW = Flow(
             "Есть ли замечания на Code Review?",
             prompts.fix_code_comments,
             "fix review issues. {key}",
+            run_checks=True,
         ),
         AttachSpecToJira(),
         CleanupSpecChanges(),
