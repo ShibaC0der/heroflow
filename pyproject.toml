@@ -1,0 +1,15 @@
+# Восстановлено по импортам (оригинал не был сфотографирован)
+[project]
+name = "heroflow"
+version = "0.1.0"
+requires-python = ">=3.13"
+dependencies = [
+    "jira2markdown",
+    "pydantic",
+    "pydantic-settings",
+    "pyyaml",
+    "questionary",
+    "qwen-code-sdk",
+    "requests",
+    "urllib3",
+]
