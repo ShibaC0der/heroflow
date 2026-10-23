@@ -57,7 +57,7 @@ packages = ["heroflow"]
 mypy_path = "src"
 
 [[tool.mypy.overrides]]
-module = ["qwen_code_sdk.*", "jira2markdown.*", "questionary.*"]
+module = ["qwen_code_sdk.*", "jira2markdown.*", "questionary.*", "markitdown.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
