@@ -110,6 +110,29 @@ checks:
 Модели по ролям: planner и reviewer берут `GG_REASONING_MODEL`, fixer — `GG_FAST_MODEL`.
 История раундов хранится в состоянии задачи, последние находки видны в `heroflow status`.
 
+## Флоу bug_fix
+
+Задачи с типом Bug (`Bug`, `Defect`, `Ошибка`, `Дефект`, `Баг`) идут сюда автоматически, ветка `bugfix/<KEY>`.
+Явно: `heroflow run PAY-1 --flow bug_fix`.
+
+```
+init_sandbox -> gather_context -> bug_triage -> bug_reproduce -> bug_root_cause -> ralph
+bug_triage --need_human--> bug_triage_gate --ok--> bug_reproduce
+bug_reproduce --stuck--> bug_reproduce_gate --ok--> bug_root_cause
+ralph --ok--> verify_regression_test -> code_review -> create_pull_request -> human_review_impl -> attach_bug_report -> END
+```
+
+- **bug_triage**: агент разбирает баг (симптом, ожидание, шаги, подозрительные места, тесты рядом) в
+  `.heroflow-context/bug/report.md`. Если правильное поведение понять нельзя, задача уходит человеку.
+- **bug_reproduce**: агент пишет тест, а heroflow проверяет его сам. Проверки на чистой ветке должны быть
+  зелёными, а после теста красными, и в их выводе должно быть имя теста. Иначе агент получает причину и
+  пробует снова (до 3 раз). Удачный тест коммитится отдельным коммитом и остаётся в PR как регрессионный.
+- **bug_root_cause**: агент ищет причину (а не место симптома) и пишет план в `root_cause.md` и `tasks.md`.
+- **ralph**: тот же цикл, что в story_sdd, только по плану исправления. Тест-воспроизведение должен
+  позеленеть без изменения его ожиданий.
+- **verify_regression_test**: heroflow проверяет, что тест не удалили по дороге.
+- В конце `report.md` и `root_cause.md` прикладываются к задаче в Jira.
+
 ## Промпты
 
 Тексты промптов лежат в `src/heroflow/prompts/<флоу>/<узел>.md.j2` (Jinja2). Неизвестная переменная в

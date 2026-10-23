@@ -22,10 +22,20 @@ class CodeReviewFix:
     История раундов хранится в ctx.reviews[name], поэтому resume продолжает с того же раунда.
     """
 
-    def __init__(self, name: str = "code_review", max_rounds: int = 3, fix_threshold: Severity = Severity.MAJOR):
+    def __init__(
+        self,
+        name: str = "code_review",
+        max_rounds: int = 3,
+        fix_threshold: Severity = Severity.MAJOR,
+        *,
+        review_template: str = "review/code_review.md.j2",
+        fix_template: str = "review/code_fix.md.j2",
+    ):
         self.name = name
         self.max_rounds = max_rounds
         self.fix_threshold = fix_threshold
+        self.review_template = review_template
+        self.fix_template = fix_template
 
     def run(self, ctx: TaskContext, env: Env) -> Outcome:
         history = ctx.reviews.setdefault(self.name, [])
@@ -38,7 +48,7 @@ class CodeReviewFix:
             diff_file.write_text(git.diff(f"origin/{ctx.base_branch}"), encoding="utf-8")
             previous = history[-1].findings if history else []
             prompt = render(
-                "review/code_review.md.j2",
+                self.review_template,
                 ctx=ctx,
                 diff_file=diff_file.relative_to(ctx.repo_path).as_posix(),
                 previous=previous,
@@ -63,7 +73,7 @@ class CodeReviewFix:
         """Фиксер правит, heroflow проверяет. Две попытки получить зелёные проверки, иначе правки откатываются."""
         failure = ""
         for _ in range(2):
-            prompt = render("review/code_fix.md.j2", ctx=ctx, findings=findings, failure=failure)
+            prompt = render(self.fix_template, ctx=ctx, findings=findings, failure=failure)
             call_agent(f"{self.name}_fix", ctx, env, prompt, role=Role.FIXER)
             result = run_checks(ctx.repo_path, env.config.checks)
             if result.ok:

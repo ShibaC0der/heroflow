@@ -15,6 +15,11 @@ def full_context(tmp_path: Path) -> TaskContext:
     ctx.delta_spec_dir = "openspec/changes/pay-1"
     ctx.jira.description = "Строка 1\nСтрока 2 без отступа"
     ctx.jira.sprint = "Sprint 42"
+    ctx.bug.plan_dir = ".heroflow-context/bug"
+    ctx.bug.reproduced = True
+    ctx.bug.test_file = "src/test/kotlin/LimitsTest.kt"
+    ctx.bug.test_name = "rejects over limit"
+    ctx.bug.repro_output = "LimitsTest > rejects over limit FAILED"
     return ctx
 
 
@@ -36,6 +41,10 @@ def test_every_template_renders(template: str, tmp_path: Path) -> None:
         step="1. Модель",
         pending_count=2,
         progress_file=".heroflow-context/ralph/progress.md",
+        report_file=".heroflow-context/bug/report.md",
+        root_cause_file=".heroflow-context/bug/root_cause.md",
+        tasks_file=".heroflow-context/bug/tasks.md",
+        feedback="Проверки зелёные",
     )
     assert text
     assert "{{" not in text

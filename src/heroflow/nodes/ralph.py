@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import logging
 import re
+from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
 
@@ -48,17 +49,31 @@ def stuck_reason(answer: str) -> str | None:
     return None
 
 
+def spec_tasks_file(ctx: TaskContext) -> Path:
+    if not ctx.delta_spec_dir:
+        raise RuntimeError("Не задана папка спецификации")
+    return ctx.repo_path / ctx.delta_spec_dir / "tasks.md"
+
+
 class RalphImplement:
     name = "ralph"
 
-    def __init__(self, max_iterations: int = 30, max_failures_in_row: int = 3) -> None:
+    def __init__(
+        self,
+        max_iterations: int = 30,
+        max_failures_in_row: int = 3,
+        *,
+        tasks_file: Callable[[TaskContext], Path] = spec_tasks_file,
+        template: str = "ralph/iteration.md.j2",
+    ) -> None:
         self.max_iterations = max_iterations
         self.max_failures_in_row = max_failures_in_row
+        # Откуда брать план: tasks.md спецификации в story_sdd, план исправления в bug_fix
+        self.tasks_file = tasks_file
+        self.template = template
 
     def run(self, ctx: TaskContext, env: Env) -> Outcome:
-        if not ctx.delta_spec_dir:
-            raise RuntimeError("Не задана папка спецификации")
-        tasks_file = ctx.repo_path / ctx.delta_spec_dir / "tasks.md"
+        tasks_file = self.tasks_file(ctx)
         if not tasks_file.exists():
             raise RuntimeError(f"Нет {tasks_file}")
         progress = ctx.context_dir / "ralph" / "progress.md"
@@ -88,7 +103,7 @@ class RalphImplement:
             st.current_task = step
             log.info("Ralph, итерация %s: %s", st.iterations, step or "починка проверок")
             prompt = render(
-                "ralph/iteration.md.j2",
+                self.template,
                 ctx=ctx,
                 step=step,
                 pending_count=len(pending),

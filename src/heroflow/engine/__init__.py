@@ -2,6 +2,7 @@ from heroflow.engine.env import Env
 from heroflow.engine.flow import END, Flow, FlowError, Node, Outcome, linear
 from heroflow.engine.runner import run_flow
 from heroflow.engine.state import (
+    BugState,
     ContextRepo,
     Finding,
     JiraAttachment,
@@ -20,6 +21,7 @@ from heroflow.engine.state import (
 
 __all__ = [
     "END",
+    "BugState",
     "ContextRepo",
     "Env",
     "Finding",

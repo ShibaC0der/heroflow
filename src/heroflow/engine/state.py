@@ -106,6 +106,20 @@ class RalphState(BaseModel):
     stuck_reason: str = ""
 
 
+class BugState(BaseModel):
+    """Флоу bug_fix: где лежит разбор бага и какой тест его воспроизводит."""
+
+    # Папка с report.md, root_cause.md и tasks.md, относительно repo_path
+    plan_dir: str = ""
+    test_file: str = ""
+    test_name: str = ""
+    # Вывод проверки, на которой тест упал до исправления: доказательство, что баг воспроизведён
+    repro_output: str = ""
+    reproduced: bool = False
+    # Почему воспроизвести не вышло: показывается в heroflow status
+    note: str = ""
+
+
 class ContextRepo(BaseModel):
     """Внешний репозиторий, склонированный как контекст (например, системная аналитика)."""
 
@@ -135,6 +149,7 @@ class TaskContext(BaseModel):
     reviews: dict[str, list[Review]] = Field(default_factory=dict)
     ralplan: list[RalplanRound] = Field(default_factory=list)
     ralph: RalphState = Field(default_factory=RalphState)
+    bug: BugState = Field(default_factory=BugState)
 
     @property
     def repo_path(self) -> Path:

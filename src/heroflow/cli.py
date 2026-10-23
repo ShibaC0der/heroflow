@@ -12,7 +12,7 @@ from rich.table import Table
 
 from heroflow.config import SkillsConfig, get_config
 from heroflow.engine import Env, TaskContext, TaskState, TaskStatus, TaskStore, run_flow
-from heroflow.flows import FLOWS, flow_for_issue_type, get_flow
+from heroflow.flows import FLOWS, branch_name, flow_for_issue_type, get_flow
 from heroflow.skills import available_skills, node_skills
 
 app = typer.Typer(help="heroflow: задача из Jira -> спека -> код -> PR", no_args_is_help=True)
@@ -98,7 +98,7 @@ def run(
         issue_key=issue_key,
         flow=flow.name,
         base_branch=base_branch,
-        branch_name=f"feature/{issue_key}",
+        branch_name=branch_name(flow, issue_key),
         task_dir=store.task_dir(issue_key),
         jira=jira_task,
     )
@@ -182,6 +182,12 @@ def status(issue_key: Annotated[str, typer.Argument(help="Ключ задачи 
         console.print(f"PR: {s.context.pull_request.url}")
     if s.error:
         console.print(f"[red]{s.error}[/]")
+    bug = s.context.bug
+    if bug.plan_dir:
+        test = f"{bug.test_name} ({bug.test_file})" if bug.reproduced else "нет"
+        console.print(f"\n[bold]bug[/]: разбор в {bug.plan_dir}, тест-воспроизведение: {test}")
+        if bug.note:
+            console.print(f"  [magenta]{bug.note}[/]")
     ralph = s.context.ralph
     if ralph.iterations:
         console.print(f"\n[bold]ralph[/], итераций: {ralph.iterations}, текущий пункт: {ralph.current_task or '-'}")
