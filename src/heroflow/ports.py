@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
 
-from heroflow.engine.state import JiraTask, PullRequest
+from heroflow.engine.state import JiraAttachment, JiraTask, PullRequest
 
 
 @dataclass(frozen=True)
@@ -29,6 +29,8 @@ class Jira(Protocol):
     def attach_file(self, issue_key: str, file_path: Path, file_name: str | None = None) -> None: ...
 
     def add_label(self, issue_key: str, label: str) -> None: ...
+
+    def download_attachment(self, attachment: JiraAttachment, dest: Path) -> None: ...
 
 
 class Bitbucket(Protocol):

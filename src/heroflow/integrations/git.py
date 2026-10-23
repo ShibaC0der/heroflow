@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -75,6 +76,28 @@ class Git:
     def files_in_commit(self, commit: str = "HEAD") -> list[str]:
         out = self._run("diff-tree", "--no-commit-id", "--name-only", "-r", commit).stdout
         return [line.strip() for line in out.splitlines() if line.strip()]
+
+    @staticmethod
+    def remote_heads(url: str) -> list[str]:
+        result = subprocess.run(["git", "ls-remote", "--heads", url], text=True, capture_output=True, check=False)
+        if result.returncode != 0:
+            raise GitError(f"git ls-remote --heads {url} -> {result.returncode}\n{result.stderr.strip()}")
+        prefix = "refs/heads/"
+        return [line.split("\t", 1)[1].removeprefix(prefix) for line in result.stdout.splitlines() if "\t" in line]
+
+    def shallow_clone(self, url: str, branch: str, paths: list[str] | None = None) -> str:
+        """Клон одной ветки без истории; с `paths` — только эти папки и файлы. Возвращает SHA."""
+        if self.repo_path.exists():
+            shutil.rmtree(self.repo_path)
+        self.repo_path.parent.mkdir(parents=True, exist_ok=True)
+        args = ["clone", "--depth", "1", "--branch", branch, "--single-branch"]
+        if paths:
+            args += ["--no-checkout"]
+        self._run(*args, url, str(self.repo_path), cwd=self.repo_path.parent)
+        if paths:
+            self._run("sparse-checkout", "set", "--no-cone", *paths)
+            self._run("checkout", branch)
+        return self._run("rev-parse", "HEAD").stdout.strip()
 
     def exclude(self, pattern: str) -> None:
         """Добавляет путь в .git/info/exclude: как .gitignore, но без коммита."""

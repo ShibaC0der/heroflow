@@ -11,6 +11,8 @@ from pydantic import BaseModel, Field
 
 from heroflow.paths import heroflow_home
 
+CONTEXT_DIR_NAME = ".heroflow-context"
+
 
 def now() -> datetime:
     return datetime.now(UTC)
@@ -24,11 +26,22 @@ class TaskStatus(StrEnum):
     DONE = "done"
 
 
+class JiraAttachment(BaseModel):
+    id: str
+    filename: str
+    url: str
+    size: int = 0
+
+
 class JiraTask(BaseModel):
     key: str
     summary: str
     issue_type: str
+    # Markdown для промптов, без служебного блока heroflow
     description: str = ""
+    # Исходная wiki-разметка: из неё читаются директивы heroflow и ссылки на ветки
+    description_raw: str = ""
+    attachments: list[JiraAttachment] = Field(default_factory=list)
     labels: list[str] = Field(default_factory=list)
     epic_key: str | None = None
     sprint: str | None = None
@@ -37,6 +50,15 @@ class JiraTask(BaseModel):
 class PullRequest(BaseModel):
     id: int
     url: str
+
+
+class ContextRepo(BaseModel):
+    """Внешний репозиторий, склонированный как контекст (например, системная аналитика)."""
+
+    path: str  # относительно repo_path
+    branch: str
+    sha: str
+    source: str  # откуда взята ветка: directive / link / issue_key / default
 
 
 class TaskContext(BaseModel):
@@ -52,10 +74,18 @@ class TaskContext(BaseModel):
     delta_spec_dir: str | None = None
     pull_request: PullRequest | None = None
     processed_comment_ids: list[int] = Field(default_factory=list)
+    # Пути относительно repo_path, чтобы агент видел их внутри рабочей папки
+    attachments: list[str] = Field(default_factory=list)
+    context_repos: dict[str, ContextRepo] = Field(default_factory=dict)
 
     @property
     def repo_path(self) -> Path:
         return self.task_dir / "repo"
+
+    @property
+    def context_dir(self) -> Path:
+        """Папка внешнего контекста внутри клона. Исключена из git через .git/info/exclude."""
+        return self.repo_path / CONTEXT_DIR_NAME
 
     @property
     def logs_dir(self) -> Path:

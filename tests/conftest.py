@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 
 from heroflow.config import BitbucketConfig, Config, GigaCodeConfig, HttpConfig, JiraConfig
-from heroflow.engine import Env, JiraTask, PullRequest, TaskContext
+from heroflow.engine import Env, JiraAttachment, JiraTask, PullRequest, TaskContext
 from heroflow.ports import PrComment
 
 
@@ -57,6 +57,10 @@ class FakeJira:
 
     def add_label(self, issue_key: str, label: str) -> None:
         self.labels.append(label)
+
+    def download_attachment(self, attachment: JiraAttachment, dest: Path) -> None:
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_text(f"содержимое {attachment.filename}", encoding="utf-8")
 
 
 @dataclass

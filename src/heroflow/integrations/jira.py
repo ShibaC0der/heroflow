@@ -7,7 +7,8 @@ from typing import Any
 from jira2markdown import convert
 
 from heroflow.config import HttpConfig, JiraConfig
-from heroflow.engine.state import JiraTask
+from heroflow.context import strip_directives
+from heroflow.engine.state import JiraAttachment, JiraTask
 from heroflow.integrations.http import HttpClient
 
 log = logging.getLogger(__name__)
@@ -15,13 +16,20 @@ log = logging.getLogger(__name__)
 
 def parse_issue(issue_key: str, payload: dict[str, Any], epic_field: str) -> JiraTask:
     fields = payload["fields"]
-    description = fields.get("description") or ""
+    raw = fields.get("description") or ""
+    description = strip_directives(raw)
     sprint = fields.get("sprint") or {}
+    attachments = [
+        JiraAttachment(id=str(a["id"]), filename=a["filename"], url=a["content"], size=a.get("size", 0))
+        for a in fields.get("attachment") or []
+    ]
     return JiraTask(
         key=issue_key,
         summary=fields.get("summary") or issue_key,
         issue_type=(fields.get("issuetype") or {}).get("name", ""),
         description=convert(description) if description else "",
+        description_raw=raw,
+        attachments=attachments,
         labels=fields.get("labels") or [],
         epic_key=fields.get(epic_field),
         sprint=sprint.get("name") if isinstance(sprint, dict) else None,
@@ -50,6 +58,16 @@ class JiraClient:
                 headers={"X-Atlassian-Token": "no-check"},
                 files={"file": (file_name or file_path.name, data, "application/octet-stream")},
             )
+
+    def download_attachment(self, attachment: JiraAttachment, dest: Path) -> None:
+        log.info("Скачиваю вложение %s", attachment.filename)
+        # content — абсолютный URL на тот же хост Jira
+        response = self.client.session.get(attachment.url, timeout=self.client.http.timeout_s, stream=True)
+        response.raise_for_status()
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        with dest.open("wb") as out:
+            for chunk in response.iter_content(chunk_size=1 << 16):
+                out.write(chunk)
 
     def add_label(self, issue_key: str, label: str) -> None:
         log.info("Добавляю лейбл %s к задаче %s", label, issue_key)

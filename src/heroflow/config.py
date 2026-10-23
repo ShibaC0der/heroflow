@@ -9,7 +9,7 @@ from functools import lru_cache
 from typing import Any, ClassVar
 
 import yaml
-from pydantic import Field
+from pydantic import BaseModel, Field
 from pydantic_settings import (
     BaseSettings,
     InitSettingsSource,
@@ -101,11 +101,36 @@ class GigaCodeConfig(ConfigBase):
         return self.reasoning_model or self.fast_model
 
 
+class ContextRepoConfig(BaseModel):
+    url: str
+    default_branch: str = "master"
+    # Какие папки и файлы брать, если в задаче не указано иное. Пусто = весь репозиторий
+    paths: list[str] = Field(default_factory=list)
+
+
+class ContextConfig(ConfigBase):
+    """Внешний контекст для планирования: вложения из Jira и дополнительные репозитории."""
+
+    model_config = SettingsConfigDict(env_prefix="hf_context_")
+    section = "context"
+
+    attachment_extensions: list[str] = Field(
+        default_factory=lambda: [
+            *("md", "txt", "yaml", "yml", "json", "xml", "sql", "csv"),
+            *("png", "jpg", "jpeg", "pdf", "docx"),
+        ]
+    )
+    attachment_max_mb: float = 20
+    # Имя -> репозиторий. Имя используется в блоке heroflow в задаче: `analytics: <ветка>`
+    repos: dict[str, ContextRepoConfig] = Field(default_factory=dict)
+
+
 class Config(BaseSettings):
     bitbucket: BitbucketConfig = Field(default_factory=lambda: BitbucketConfig())  # type: ignore[call-arg]
     jira: JiraConfig = Field(default_factory=lambda: JiraConfig())  # type: ignore[call-arg]
     gigacode: GigaCodeConfig = Field(default_factory=GigaCodeConfig)
     http: HttpConfig = Field(default_factory=HttpConfig)
+    context: ContextConfig = Field(default_factory=ContextConfig)
 
 
 @lru_cache

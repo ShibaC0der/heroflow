@@ -14,6 +14,7 @@ from heroflow.flows.story_sdd.nodes import (
     SelfReviewSpec,
     Verify,
 )
+from heroflow.nodes.context import GatherContext
 
 HUMAN_REVIEW_SPEC = "human_review_proposal"
 HUMAN_REVIEW_CODE = "human_review_impl"
@@ -23,6 +24,7 @@ FLOW = Flow(
     start="init_sandbox",
     nodes=(
         InitSandbox(),
+        GatherContext(),
         Explore(),
         Propose(),
         ResolveDeltaSpecDir(),
@@ -49,6 +51,7 @@ FLOW = Flow(
     edges={
         **linear(
             "init_sandbox",
+            "gather_context",
             "explore",
             "opsx_propose",
             "resolve_delta_spec_dir",
